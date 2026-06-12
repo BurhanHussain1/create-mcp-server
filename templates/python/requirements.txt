@@ -1,0 +1,2 @@
+# The official MCP Python SDK. The [cli] extra adds helpful command-line tools.
+mcp[cli]>=1.2.0

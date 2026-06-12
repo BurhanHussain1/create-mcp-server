@@ -1,0 +1,32 @@
+{
+  "name": "create-mcp-server",
+  "version": "0.1.0",
+  "description": "A CLI tool that generates ready-to-run MCP servers.",
+  "type": "module",
+  "bin": {
+    "create-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cli",
+    "generator",
+    "scaffold"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/prompts": "^2.4.9",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
