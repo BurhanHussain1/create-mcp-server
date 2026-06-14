@@ -1,5 +1,8 @@
 # create-mcp-server
 
+[![CI](https://github.com/BurhanHussain1/create-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/BurhanHussain1/create-mcp-server/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A command-line tool that generates a **ready-to-run [MCP](https://modelcontextprotocol.io) server** in seconds — like `create-react-app`, but for Model Context Protocol servers.
 
 Answer three quick questions and get a complete, working server you can run immediately.
@@ -30,6 +33,7 @@ $ npx create-mcp-server
 - **Safe** — never overwrites an existing folder.
 - **Import from any API** — point it at an OpenAPI/Swagger spec (file or URL) and it generates one tool per endpoint, each calling the real API.
 - **Visual builder** — run `create-mcp-server studio` to design a server in your browser (no code) and download it as a zip.
+- **Production-ready output** — typed inputs (string/number/boolean), error handling with request timeouts, an optional Streamable HTTP transport for hosted agents, and a `Dockerfile`.
 
 ## Usage
 
@@ -113,16 +117,39 @@ your answers  →  pick template  →  copy files + fill {{blanks}}  →  new se
 - [`express`](https://expressjs.com/) + [`jszip`](https://stuk.github.io/jszip/) — power the visual builder (web server + zip download)
 - Official MCP SDKs ([`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol/typescript-sdk), [`mcp`](https://github.com/modelcontextprotocol/python-sdk)) in the generated servers
 
+## Development
+
+```bash
+npm install        # install dependencies
+npm run dev        # run the CLI from source
+npm test           # run the test suite (Vitest)
+npm run lint       # lint with ESLint
+npm run format     # format with Prettier
+npm run typecheck  # type-check without emitting
+npm run build      # compile to dist/
+```
+
+Every push and pull request runs type-check, lint, format check, tests, and
+build via GitHub Actions (`.github/workflows/ci.yml`).
+
+## Publishing
+
+```bash
+npm login
+npm publish        # prepublishOnly builds dist/ automatically
+```
+
 ## Roadmap
 
 - [x] **Stage 1** — interactive CLI scaffolder (TypeScript + Python templates)
 - [x] **Stage 2** — import an OpenAPI/Swagger spec and auto-generate a tool per endpoint
 - [x] **Stage 3** — a visual, no-code web builder (`studio`) that exports a server
+- [x] **Stage 4** — production hardening: typed inputs, error handling, HTTP transport, Docker, tests + CI
 
 ### Future ideas
 - Generate Python servers from the visual builder and OpenAPI import
-- Richer tool inputs (numbers, enums, optional fields)
-- One-click deploy
+- Enum / array input types
+- One-click deploy to a cloud host
 
 ## License
 

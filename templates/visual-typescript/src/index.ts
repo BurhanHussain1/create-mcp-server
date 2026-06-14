@@ -3,52 +3,139 @@
 /**
  * {{serverName}} — an MCP server built with MCP Studio (create-mcp-server).
  * Each tool below is a starting point — add your own logic where marked TODO.
+ *
+ * Transports:
+ *   - stdio (default) — for local use and desktop clients.
+ *   - Streamable HTTP — set MCP_TRANSPORT=http (and optional PORT) to run
+ *     it as a remote server for hosted agents.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createServer as createHttpServer } from "node:http";
 import { z } from "zod";
 
 // One entry per tool you designed in the studio.
+type ToolInput = {
+  name: string;
+  type: "string" | "number" | "boolean";
+  description: string;
+  required: boolean;
+};
 type ToolDef = {
   name: string;
   description: string;
-  inputs: string[];
+  inputs: ToolInput[];
 };
 
 const tools: ToolDef[] = {{tools}};
 
-const server = new McpServer({ name: "{{serverName}}", version: "0.1.0" });
-
-for (const tool of tools) {
-  // Each input you defined becomes a required string field in the schema.
-  const inputSchema: Record<string, z.ZodTypeAny> = {};
-  for (const input of tool.inputs) inputSchema[input] = z.string();
-
-  server.registerTool(
-    tool.name,
-    { description: tool.description, inputSchema },
-    async (args) => {
-      const values = args as Record<string, unknown>;
-
-      // TODO: replace this with your real logic for "{{serverName}}".
-      return {
-        content: [
-          {
-            type: "text",
-            text:
-              `Tool "${tool.name}" was called with:\n` +
-              `${JSON.stringify(values, null, 2)}\n\n` +
-              `Edit src/index.ts to make this tool do something real.`,
-          },
-        ],
-      };
-    }
-  );
+// Turn one input definition into a zod validator (the tool's input rules).
+function buildField(input: ToolInput): z.ZodTypeAny {
+  let field: z.ZodTypeAny =
+    input.type === "number"
+      ? z.number()
+      : input.type === "boolean"
+        ? z.boolean()
+        : z.string();
+  if (input.description) field = field.describe(input.description);
+  if (!input.required) field = field.optional();
+  return field;
 }
 
+// Build a fresh server with all tools registered. We make a NEW one per
+// HTTP request (stateless mode), so this is a function rather than a global.
+function createServer(): McpServer {
+  const server = new McpServer({ name: "{{serverName}}", version: "0.1.0" });
+
+  for (const tool of tools) {
+    // Build the tool's input schema from the inputs you defined.
+    const inputSchema: Record<string, z.ZodTypeAny> = {};
+    for (const input of tool.inputs) inputSchema[input.name] = buildField(input);
+
+    server.registerTool(
+      tool.name,
+      { description: tool.description, inputSchema },
+      async (args) => {
+        const values = args as Record<string, unknown>;
+
+        try {
+          // TODO: replace this with your real logic for "{{serverName}}".
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Tool "${tool.name}" was called with:\n` +
+                  `${JSON.stringify(values, null, 2)}\n\n` +
+                  `Edit src/index.ts to make this tool do something real.`,
+              },
+            ],
+          };
+        } catch (error) {
+          // If your logic throws, report it as a tool error (don't crash).
+          return {
+            isError: true,
+            content: [
+              { type: "text", text: `Error: ${(error as Error).message}` },
+            ],
+          };
+        }
+      }
+    );
+  }
+
+  return server;
+}
+
+// Start over stdio (default) or Streamable HTTP (MCP_TRANSPORT=http).
 async function main() {
-  await server.connect(new StdioServerTransport());
+  if (process.env.MCP_TRANSPORT === "http") {
+    const port = Number(process.env.PORT) || 3000;
+
+    const http = createHttpServer(async (req, res) => {
+      // Stateless Streamable HTTP: one fresh server + transport per request.
+      if (req.method === "POST" && req.url === "/mcp") {
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const body = chunks.length
+            ? JSON.parse(Buffer.concat(chunks).toString())
+            : undefined;
+
+          const server = createServer();
+          const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined,
+          });
+          res.on("close", () => {
+            void transport.close();
+            void server.close();
+          });
+          await server.connect(transport);
+          await transport.handleRequest(req, res, body);
+        } catch (error) {
+          console.error("Request error:", error);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.end();
+          }
+        }
+      } else {
+        res.statusCode = 405;
+        res.end();
+      }
+    });
+
+    http.listen(port, () => {
+      console.error(
+        `MCP server (HTTP) listening on http://localhost:${port}/mcp`
+      );
+    });
+  } else {
+    const server = createServer();
+    await server.connect(new StdioServerTransport());
+  }
 }
 
 main().catch((error) => {

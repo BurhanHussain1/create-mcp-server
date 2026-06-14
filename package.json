@@ -9,7 +9,13 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "format": "prettier --write \"src/**/*.ts\" \"public/**/*.{js,css,html}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"public/**/*.{js,css,html}\"",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -18,6 +24,17 @@
     "generator",
     "scaffold"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BurhanHussain1/create-mcp-server.git"
+  },
+  "homepage": "https://github.com/BurhanHussain1/create-mcp-server#readme",
+  "bugs": "https://github.com/BurhanHussain1/create-mcp-server/issues",
+  "author": "Burhan Hussain",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": ["dist", "templates", "public", "examples"],
   "license": "MIT",
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
@@ -27,10 +44,15 @@
     "prompts": "^2.4.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.3",
     "@types/prompts": "^2.4.9",
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.4",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0",
+    "vitest": "^4.1.8"
   }
 }

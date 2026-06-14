@@ -15,13 +15,36 @@ Every endpoint in the API became one MCP tool that calls the real API.
 ## Configuration (environment variables)
 
 - `API_BASE_URL` — override the API base URL (defaults to the one above).
-- `API_TOKEN` — if set, it is sent on every request as `Authorization: Bearer <token>`.
+- `API_TOKEN` — if set, sent on every request as `Authorization: Bearer <token>`.
+- `REQUEST_TIMEOUT_MS` — per-request timeout (default `30000`).
+- `MCP_TRANSPORT` — `stdio` (default) or `http` (see below).
+- `PORT` — port for HTTP mode (default `3000`).
 
 Example (Windows PowerShell):
 
 ```powershell
 $env:API_TOKEN = "your-key-here"
 npm run dev
+```
+
+## Run as a remote (HTTP) server
+
+For hosted/remote agents, run it over Streamable HTTP instead of stdio:
+
+```powershell
+npm run build
+$env:MCP_TRANSPORT = "http"; $env:PORT = "3000"; npm start
+```
+
+It serves the MCP endpoint at `http://localhost:3000/mcp`.
+
+## Deploy with Docker
+
+A `Dockerfile` is included (defaults to HTTP mode on port 3000):
+
+```bash
+docker build -t {{serverName}} .
+docker run -p 3000:3000 -e API_TOKEN=your-key-here {{serverName}}
 ```
 
 ## Test it in the MCP Inspector
@@ -34,5 +57,7 @@ and run it — the response from the live API comes back as text.
 
 ## Notes
 
-- Tool inputs are passed as strings. For endpoints that take a JSON body,
-  pass the `body` argument as a JSON string.
+- Tool inputs are typed (string / number / boolean) based on the spec.
+- For endpoints that take a JSON body, pass the `body` argument as a JSON string.
+- Failed requests (network error, timeout) return an error result with a
+  message instead of crashing the server.

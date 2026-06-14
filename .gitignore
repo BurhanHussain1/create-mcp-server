@@ -10,3 +10,6 @@ dist/
 
 # Local scratch / testing
 .scratch/
+
+# npm pack output
+*.tgz

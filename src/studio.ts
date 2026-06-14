@@ -33,9 +33,13 @@ function validateSpec(spec: VisualSpec): string | null {
     if (!Array.isArray(tool.inputs)) {
       return `Tool "${tool.name}" has invalid inputs.`;
     }
+    const validTypes = ["string", "number", "boolean"];
     for (const input of tool.inputs) {
-      if (!identifier.test(input)) {
-        return `Invalid input name "${input}" in tool "${tool.name}".`;
+      if (!input || !identifier.test(input.name)) {
+        return `Invalid input name in tool "${tool.name}".`;
+      }
+      if (!validTypes.includes(input.type)) {
+        return `Input "${input.name}" in tool "${tool.name}" has an invalid type.`;
       }
     }
   }

@@ -103,9 +103,7 @@ export async function askImportQuestions(): Promise<ImportAnswers> {
         name: "specSource",
         message: "Path or URL to the OpenAPI spec (JSON or YAML):",
         validate: (value: string) =>
-          value.trim().length > 0
-            ? true
-            : "Please provide a file path or URL.",
+          value.trim().length > 0 ? true : "Please provide a file path or URL.",
       },
     ],
     { onCancel }

@@ -127,8 +127,7 @@ export async function generateApiServer(
     description: op.description,
     method: op.method.toUpperCase(),
     path: op.path,
-    pathParams: op.pathParams,
-    queryParams: op.queryParams,
+    params: op.params,
     hasBody: op.hasBody,
   }));
 
@@ -140,11 +139,19 @@ export async function generateApiServer(
   });
 }
 
+// A single input (parameter) of a tool.
+export interface ToolInput {
+  name: string;
+  type: "string" | "number" | "boolean";
+  description: string;
+  required: boolean;
+}
+
 // A tool the user designed in the visual studio.
 export interface VisualTool {
   name: string;
   description: string;
-  inputs: string[];
+  inputs: ToolInput[];
 }
 
 // A whole server the user designed in the visual studio.

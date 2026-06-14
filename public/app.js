@@ -5,15 +5,38 @@
 const toolsContainer = document.getElementById("tools");
 const statusEl = document.getElementById("status");
 
-// Build one "input" row (a single tool parameter).
+// Build one "input" row (a single tool parameter):
+// name, type, description, and a "required" checkbox.
 function createInputRow() {
   const row = document.createElement("div");
   row.className = "input-row";
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "input-name";
-  input.placeholder = "input name (e.g. city)";
+  const name = document.createElement("input");
+  name.type = "text";
+  name.className = "input-name";
+  name.placeholder = "input name (e.g. city)";
+
+  const type = document.createElement("select");
+  type.className = "input-type";
+  for (const t of ["string", "number", "boolean"]) {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    type.appendChild(opt);
+  }
+
+  const desc = document.createElement("input");
+  desc.type = "text";
+  desc.className = "input-desc";
+  desc.placeholder = "description (optional)";
+
+  const requiredLabel = document.createElement("label");
+  requiredLabel.className = "required-label";
+  const required = document.createElement("input");
+  required.type = "checkbox";
+  required.className = "input-required";
+  required.checked = true;
+  requiredLabel.append(required, document.createTextNode(" required"));
 
   const remove = document.createElement("button");
   remove.type = "button";
@@ -21,7 +44,7 @@ function createInputRow() {
   remove.textContent = "✕";
   remove.addEventListener("click", () => row.remove());
 
-  row.append(input, remove);
+  row.append(name, type, desc, requiredLabel, remove);
   return row;
 }
 
@@ -59,7 +82,9 @@ function createToolCard() {
   addInput.type = "button";
   addInput.className = "btn-ghost btn-small";
   addInput.textContent = "+ Add input";
-  addInput.addEventListener("click", () => inputs.appendChild(createInputRow()));
+  addInput.addEventListener("click", () =>
+    inputs.appendChild(createInputRow())
+  );
 
   card.append(header, desc, inputs, addInput);
   return card;
@@ -74,9 +99,15 @@ function collectSpec() {
     const toolName = card.querySelector(".tool-name").value.trim();
     const description = card.querySelector(".tool-desc").value.trim();
     const inputs = [];
-    for (const inp of card.querySelectorAll(".input-name")) {
-      const value = inp.value.trim();
-      if (value) inputs.push(value);
+    for (const inputRow of card.querySelectorAll(".input-row")) {
+      const inputName = inputRow.querySelector(".input-name").value.trim();
+      if (!inputName) continue;
+      inputs.push({
+        name: inputName,
+        type: inputRow.querySelector(".input-type").value,
+        description: inputRow.querySelector(".input-desc").value.trim(),
+        required: inputRow.querySelector(".input-required").checked,
+      });
     }
     tools.push({ name: toolName, description, inputs });
   }
