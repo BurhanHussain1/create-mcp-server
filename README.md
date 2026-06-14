@@ -29,6 +29,7 @@ $ npx create-mcp-server
 - **Interactive** — a friendly question-and-answer flow (powered by `prompts`).
 - **Safe** — never overwrites an existing folder.
 - **Import from any API** — point it at an OpenAPI/Swagger spec (file or URL) and it generates one tool per endpoint, each calling the real API.
+- **Visual builder** — run `create-mcp-server studio` to design a server in your browser (no code) and download it as a zip.
 
 ## Usage
 
@@ -55,6 +56,19 @@ When you run it, you pick a mode:
    ```
 
    The generated tools call the live API. Set `API_TOKEN` for APIs that need auth.
+
+### Visual builder (MCP Studio)
+
+Prefer clicking to typing? Launch the no-code builder:
+
+```bash
+npx create-mcp-server studio
+# then open http://localhost:4321 in your browser
+```
+
+Add tools and their inputs in the browser, click **Generate**, and a
+ready-to-run server downloads as a zip. Unzip it, then `npm install` and
+`npm run dev`.
 
 ## What the generated server looks like
 
@@ -86,7 +100,9 @@ your answers  →  pick template  →  copy files + fill {{blanks}}  →  new se
 | `src/prompts.ts` | Asks the questions and returns a typed answers object |
 | `src/generator.ts` | Copies the chosen template and fills in the placeholders |
 | `src/openapi.ts` | Reads an OpenAPI spec and extracts its endpoints |
-| `templates/` | The TypeScript, Python, and OpenAPI server templates |
+| `src/studio.ts` | The visual builder's local web server + generate endpoint |
+| `public/` | The browser UI for the visual builder |
+| `templates/` | The server templates (scaffold, OpenAPI, and studio) |
 
 ## Tech stack
 
@@ -94,13 +110,19 @@ your answers  →  pick template  →  copy files + fill {{blanks}}  →  new se
 - [`commander`](https://github.com/tj/commander.js) — CLI argument parsing
 - [`prompts`](https://github.com/terkelg/prompts) — interactive questions
 - [`@apidevtools/swagger-parser`](https://github.com/APIDevTools/swagger-parser) — parses OpenAPI/Swagger specs
+- [`express`](https://expressjs.com/) + [`jszip`](https://stuk.github.io/jszip/) — power the visual builder (web server + zip download)
 - Official MCP SDKs ([`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol/typescript-sdk), [`mcp`](https://github.com/modelcontextprotocol/python-sdk)) in the generated servers
 
 ## Roadmap
 
 - [x] **Stage 1** — interactive CLI scaffolder (TypeScript + Python templates)
 - [x] **Stage 2** — import an OpenAPI/Swagger spec and auto-generate a tool per endpoint
-- [ ] **Stage 3** — a visual, no-code web builder that exports a server
+- [x] **Stage 3** — a visual, no-code web builder (`studio`) that exports a server
+
+### Future ideas
+- Generate Python servers from the visual builder and OpenAPI import
+- Richer tool inputs (numbers, enums, optional fields)
+- One-click deploy
 
 ## License
 

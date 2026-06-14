@@ -61,6 +61,32 @@ async function copyAndFill(
   }
 }
 
+// Read a template folder INTO MEMORY: returns a map of relative-path -> content
+// (with blanks already filled). Used by the studio, which builds a zip in
+// memory instead of writing to disk.
+async function readTemplateFiles(
+  fromDir: string,
+  baseDir: string,
+  replacements: Record<string, string>
+): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  const entries = await fs.readdir(fromDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fromPath = path.join(fromDir, entry.name);
+    if (entry.isDirectory()) {
+      const sub = await readTemplateFiles(fromPath, baseDir, replacements);
+      for (const [rel, content] of sub) files.set(rel, content);
+    } else {
+      // Use forward slashes for the path inside the zip (works everywhere).
+      const rel = path.relative(baseDir, fromPath).split(path.sep).join("/");
+      const original = await fs.readFile(fromPath, "utf8");
+      files.set(rel, fillBlanks(original, replacements));
+    }
+  }
+  return files;
+}
+
 // Shared: create a project from a template folder, filling in the blanks.
 async function createFromTemplate(
   templateName: string,
@@ -111,5 +137,30 @@ export async function generateApiServer(
     baseUrl: api.baseUrl,
     // Embed the operations as JSON — which is valid TypeScript for an array.
     operations: JSON.stringify(operations, null, 2),
+  });
+}
+
+// A tool the user designed in the visual studio.
+export interface VisualTool {
+  name: string;
+  description: string;
+  inputs: string[];
+}
+
+// A whole server the user designed in the visual studio.
+export interface VisualSpec {
+  name: string;
+  tools: VisualTool[];
+}
+
+// STUDIO mode: build the server files IN MEMORY (no disk writes) so the
+// web app can zip them up and send them to the browser.
+export async function buildVisualServerFiles(
+  spec: VisualSpec
+): Promise<Map<string, string>> {
+  const templateDir = path.join(TEMPLATES_ROOT, "visual-typescript");
+  return readTemplateFiles(templateDir, templateDir, {
+    serverName: spec.name,
+    tools: JSON.stringify(spec.tools, null, 2),
   });
 }

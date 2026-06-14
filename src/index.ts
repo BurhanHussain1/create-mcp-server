@@ -12,6 +12,7 @@ import {
 } from "./prompts.js";
 import { generateServer, generateApiServer } from "./generator.js";
 import { parseOpenApi } from "./openapi.js";
+import { startStudio } from "./studio.js";
 
 // "Command" helps us define our CLI: its name, version, and what it does.
 const program = new Command();
@@ -21,7 +22,18 @@ program
   .description("Generate a ready-to-run MCP server in seconds.")
   .version("0.1.0");
 
-// .action() = the code that runs when someone types our command.
+// Subcommand: launch the visual builder in the browser.
+//   create-mcp-server studio
+program
+  .command("studio")
+  .description("Launch the visual MCP server builder in your browser")
+  .option("-p, --port <number>", "port to run on", "4321")
+  .action(async (options: { port: string }) => {
+    await startStudio(Number(options.port));
+  });
+
+// .action() = the code that runs when someone types our command with no
+// subcommand (the interactive scaffold/import flow).
 program.action(async () => {
   console.log("");
   console.log("  Welcome to create-mcp-server!");

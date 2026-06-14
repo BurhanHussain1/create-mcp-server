@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCP Studio — visual MCP server builder</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --line: #334155;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --danger: #ef4444;
+        --ok: #22c55e;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+      header h1 { margin: 0 0 4px; font-size: 28px; }
+      header p { margin: 0 0 24px; color: var(--muted); }
+      label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+      input[type="text"] {
+        width: 100%;
+        padding: 9px 11px;
+        background: #0b1220;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 14px;
+      }
+      input[type="text"]:focus { outline: none; border-color: var(--accent); }
+      .field { margin-bottom: 18px; }
+      .tool-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .tool-header { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+      .tool-header input { flex: 1; }
+      .inputs { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+      .input-row { display: flex; gap: 8px; align-items: center; }
+      .input-row input { flex: 1; }
+      button {
+        font-size: 14px;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .btn-primary { background: var(--accent); color: white; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+      .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+      .btn-small { padding: 6px 10px; font-size: 12px; }
+      .btn-danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
+      .btn-danger:hover { border-color: var(--danger); }
+      .actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; }
+      .status { margin-top: 16px; font-size: 14px; min-height: 20px; }
+      .status.error { color: var(--danger); }
+      .status.success { color: var(--ok); }
+      code { background: #0b1220; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>🛠️ MCP Studio</h1>
+        <p>Design an MCP server by clicking — then download a ready-to-run project.</p>
+      </header>
+
+      <div class="field">
+        <label for="server-name">Server name</label>
+        <input type="text" id="server-name" value="my-mcp-server" />
+      </div>
+
+      <h2 style="font-size: 16px;">Tools</h2>
+      <div id="tools"></div>
+
+      <button type="button" id="add-tool" class="btn-ghost">+ Add tool</button>
+
+      <div class="actions">
+        <button type="button" id="generate" class="btn-primary">
+          Generate &amp; download server
+        </button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

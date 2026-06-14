@@ -22,9 +22,12 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "commander": "^15.0.0",
+    "express": "^5.2.1",
+    "jszip": "^3.10.1",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.9.3",
     "@types/prompts": "^2.4.9",
     "tsx": "^4.22.4",
