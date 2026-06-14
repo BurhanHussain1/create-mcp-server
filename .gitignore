@@ -7,3 +7,6 @@ dist/
 # Logs and OS files
 *.log
 .DS_Store
+
+# Local scratch / testing
+.scratch/

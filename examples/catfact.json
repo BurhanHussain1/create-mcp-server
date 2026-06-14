@@ -1,0 +1,37 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "Cat Facts API", "version": "1.0.0" },
+  "servers": [{ "url": "https://catfact.ninja" }],
+  "paths": {
+    "/fact": {
+      "get": {
+        "operationId": "getRandomFact",
+        "summary": "Get a random cat fact",
+        "parameters": [
+          {
+            "name": "max_length",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": { "200": { "description": "A cat fact" } }
+      }
+    },
+    "/breeds": {
+      "get": {
+        "operationId": "listBreeds",
+        "summary": "List cat breeds",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": { "200": { "description": "A list of breeds" } }
+      }
+    }
+  }
+}
