@@ -15,10 +15,13 @@ Every endpoint in the API became one MCP tool that calls the real API.
 ## Configuration (environment variables)
 
 - `API_BASE_URL` — override the API base URL (defaults to the one above).
-- `API_TOKEN` — if set, sent on every request as `Authorization: Bearer <token>`.
+- `API_TOKEN` — **outbound auth**: sent to the API as `Authorization: Bearer <token>`.
 - `REQUEST_TIMEOUT_MS` — per-request timeout (default `30000`).
+- `MAX_RETRIES` — retries for failed/5xx upstream requests (default `2`).
 - `MCP_TRANSPORT` — `stdio` (default) or `http` (see below).
 - `PORT` — port for HTTP mode (default `3000`).
+- `MCP_AUTH_TOKEN` — **inbound auth**: if set, clients must send `Authorization: Bearer <token>` to use the server over HTTP.
+- `ALLOWED_HOSTS` — comma-separated allowed `Host` headers; enables DNS-rebinding protection when set (e.g. `api.example.com`).
 
 Example (Windows PowerShell):
 
@@ -36,7 +39,20 @@ npm run build
 $env:MCP_TRANSPORT = "http"; $env:PORT = "3000"; npm start
 ```
 
-It serves the MCP endpoint at `http://localhost:3000/mcp`.
+It serves the MCP endpoint at `http://localhost:3000/mcp`, plus a public
+`GET /health` endpoint for load balancers. It shuts down gracefully on
+SIGTERM/SIGINT.
+
+### Securing it
+
+```powershell
+# Require a token from clients, and lock the allowed host:
+$env:MCP_AUTH_TOKEN = "a-long-random-secret"
+$env:ALLOWED_HOSTS = "your-domain.com"
+$env:MCP_TRANSPORT = "http"; npm start
+```
+
+Clients then connect with header `Authorization: Bearer a-long-random-secret`.
 
 ## Deploy with Docker
 
@@ -44,8 +60,19 @@ A `Dockerfile` is included (defaults to HTTP mode on port 3000):
 
 ```bash
 docker build -t {{serverName}} .
-docker run -p 3000:3000 -e API_TOKEN=your-key-here {{serverName}}
+docker run -p 3000:3000 \
+  -e MCP_AUTH_TOKEN=a-long-random-secret \
+  -e API_TOKEN=your-upstream-key \
+  {{serverName}}
 ```
+
+## Going to production
+
+This server already handles **inbound + outbound auth, input validation,
+timeouts, retries, DNS-rebinding protection, a `/health` check, and graceful
+shutdown**. Leave the rest to your platform/infrastructure — **TLS/HTTPS**,
+**rate limiting**, **metrics & tracing**, and **secret storage** — usually via
+a reverse proxy or API gateway in front of this server.
 
 ## Test it in the MCP Inspector
 

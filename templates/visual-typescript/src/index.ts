@@ -16,6 +16,16 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer as createHttpServer } from "node:http";
 import { z } from "zod";
 
+// --- HTTP transport settings (only used when MCP_TRANSPORT=http) ---
+// Inbound auth: if set, clients must send `Authorization: Bearer <token>`.
+const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN;
+// DNS-rebinding protection: if set (comma-separated), only these Host
+// headers are allowed (e.g. "myserver.example.com,localhost:3000").
+const ALLOWED_HOSTS = (process.env.ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((h) => h.trim())
+  .filter(Boolean);
+
 // One entry per tool you designed in the studio.
 type ToolInput = {
   name: string;
@@ -94,9 +104,28 @@ async function main() {
   if (process.env.MCP_TRANSPORT === "http") {
     const port = Number(process.env.PORT) || 3000;
 
-    const http = createHttpServer(async (req, res) => {
-      // Stateless Streamable HTTP: one fresh server + transport per request.
+    const httpServer = createHttpServer(async (req, res) => {
+      // Public health check for load balancers / orchestrators (no auth).
+      if (req.method === "GET" && req.url === "/health") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "ok" }));
+        return;
+      }
+
       if (req.method === "POST" && req.url === "/mcp") {
+        // Inbound auth: if MCP_AUTH_TOKEN is set, require a matching token.
+        if (
+          MCP_AUTH_TOKEN &&
+          req.headers.authorization !== `Bearer ${MCP_AUTH_TOKEN}`
+        ) {
+          res.statusCode = 401;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
+
+        // Stateless Streamable HTTP: one fresh server + transport per request.
         try {
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -107,6 +136,9 @@ async function main() {
           const server = createServer();
           const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: undefined,
+            ...(ALLOWED_HOSTS.length > 0
+              ? { enableDnsRebindingProtection: true, allowedHosts: ALLOWED_HOSTS }
+              : {}),
           });
           res.on("close", () => {
             void transport.close();
@@ -121,17 +153,26 @@ async function main() {
             res.end();
           }
         }
-      } else {
-        res.statusCode = 405;
-        res.end();
+        return;
       }
+
+      res.statusCode = 405;
+      res.end();
     });
 
-    http.listen(port, () => {
+    httpServer.listen(port, () => {
       console.error(
         `MCP server (HTTP) listening on http://localhost:${port}/mcp`
       );
     });
+
+    // Graceful shutdown: stop accepting connections, then exit cleanly.
+    const shutdown = () => {
+      console.error("Shutting down...");
+      httpServer.close(() => process.exit(0));
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   } else {
     const server = createServer();
     await server.connect(new StdioServerTransport());

@@ -19,11 +19,25 @@ import { z } from "zod";
 // The API this server talks to. You can override it with an env variable.
 const BASE_URL = process.env.API_BASE_URL || "{{baseUrl}}";
 
-// Optional auth: if you set API_TOKEN, it is sent as a Bearer token.
+// Optional outbound auth: if you set API_TOKEN, it is sent to the API as a
+// Bearer token on every request.
 const API_TOKEN = process.env.API_TOKEN;
 
 // How long to wait for the API before giving up (milliseconds).
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 30000;
+
+// How many times to retry a failed/5xx upstream request (after the first try).
+const MAX_RETRIES = Number(process.env.MAX_RETRIES) || 2;
+
+// --- HTTP transport settings (only used when MCP_TRANSPORT=http) ---
+// Inbound auth: if set, clients must send `Authorization: Bearer <token>`.
+const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN;
+// DNS-rebinding protection: if set (comma-separated), only these Host
+// headers are allowed (e.g. "api.example.com,localhost:3000").
+const ALLOWED_HOSTS = (process.env.ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((h) => h.trim())
+  .filter(Boolean);
 
 // One parameter of an endpoint.
 type ApiParam = {
@@ -57,6 +71,30 @@ function buildField(param: ApiParam): z.ZodTypeAny {
   if (param.description) field = field.describe(param.description);
   if (!param.required) field = field.optional();
   return field;
+}
+
+// Fetch with a timeout, retrying transient failures (network errors and 5xx
+// responses) with exponential backoff.
+async function fetchWithRetry(url: URL, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      if (response.status < 500) return response; // success or client error
+      lastError = new Error(`HTTP ${response.status}`);
+      if (attempt === MAX_RETRIES) return response; // out of retries
+    } catch (error) {
+      lastError = error;
+      if (attempt === MAX_RETRIES) throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+    // Exponential backoff: 250ms, 500ms, 1000ms, ...
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+  }
+  throw lastError;
 }
 
 // Build a fresh server with all tools registered. We make a NEW one per
@@ -106,24 +144,12 @@ function createServer(): McpServer {
           if (API_TOKEN) headers["Authorization"] = `Bearer ${API_TOKEN}`;
           if (op.hasBody) headers["Content-Type"] = "application/json";
 
-          // 4. Make the request, with a timeout so it can't hang forever.
-          const controller = new AbortController();
-          const timer = setTimeout(
-            () => controller.abort(),
-            REQUEST_TIMEOUT_MS
-          );
-          let response: Response;
-          try {
-            response = await fetch(url, {
-              method: op.method,
-              headers,
-              body:
-                op.hasBody && values.body ? String(values.body) : undefined,
-              signal: controller.signal,
-            });
-          } finally {
-            clearTimeout(timer);
-          }
+          // 4. Make the request (with timeout + retries on transient errors).
+          const response = await fetchWithRetry(url, {
+            method: op.method,
+            headers,
+            body: op.hasBody && values.body ? String(values.body) : undefined,
+          });
           const text = await response.text();
 
           return {
@@ -157,9 +183,28 @@ async function main() {
   if (process.env.MCP_TRANSPORT === "http") {
     const port = Number(process.env.PORT) || 3000;
 
-    const http = createHttpServer(async (req, res) => {
-      // Stateless Streamable HTTP: one fresh server + transport per request.
+    const httpServer = createHttpServer(async (req, res) => {
+      // Public health check for load balancers / orchestrators (no auth).
+      if (req.method === "GET" && req.url === "/health") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "ok" }));
+        return;
+      }
+
       if (req.method === "POST" && req.url === "/mcp") {
+        // Inbound auth: if MCP_AUTH_TOKEN is set, require a matching token.
+        if (
+          MCP_AUTH_TOKEN &&
+          req.headers.authorization !== `Bearer ${MCP_AUTH_TOKEN}`
+        ) {
+          res.statusCode = 401;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
+
+        // Stateless Streamable HTTP: one fresh server + transport per request.
         try {
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -170,6 +215,9 @@ async function main() {
           const server = createServer();
           const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: undefined,
+            ...(ALLOWED_HOSTS.length > 0
+              ? { enableDnsRebindingProtection: true, allowedHosts: ALLOWED_HOSTS }
+              : {}),
           });
           res.on("close", () => {
             void transport.close();
@@ -184,17 +232,26 @@ async function main() {
             res.end();
           }
         }
-      } else {
-        res.statusCode = 405;
-        res.end();
+        return;
       }
+
+      res.statusCode = 405;
+      res.end();
     });
 
-    http.listen(port, () => {
+    httpServer.listen(port, () => {
       console.error(
         `MCP server (HTTP) listening on http://localhost:${port}/mcp`
       );
     });
+
+    // Graceful shutdown: stop accepting connections, then exit cleanly.
+    const shutdown = () => {
+      console.error("Shutting down...");
+      httpServer.close(() => process.exit(0));
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   } else {
     const server = createServer();
     await server.connect(new StdioServerTransport());

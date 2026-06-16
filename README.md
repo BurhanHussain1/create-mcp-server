@@ -33,7 +33,7 @@ $ npx create-mcp-server
 - **Safe** — never overwrites an existing folder.
 - **Import from any API** — point it at an OpenAPI/Swagger spec (file or URL) and it generates one tool per endpoint, each calling the real API.
 - **Visual builder** — run `create-mcp-server studio` to design a server in your browser (no code) and download it as a zip.
-- **Production-ready output** — typed inputs (string/number/boolean), error handling with request timeouts, an optional Streamable HTTP transport for hosted agents, and a `Dockerfile`.
+- **Production-ready output** — typed inputs, error handling, request timeouts + retries, an optional Streamable HTTP transport with **bearer-token auth**, DNS-rebinding protection, a `/health` check, graceful shutdown, and a `Dockerfile`. (TLS, rate limiting, and observability are left to your deployment platform.)
 
 ## Usage
 
@@ -145,6 +145,7 @@ npm publish        # prepublishOnly builds dist/ automatically
 - [x] **Stage 2** — import an OpenAPI/Swagger spec and auto-generate a tool per endpoint
 - [x] **Stage 3** — a visual, no-code web builder (`studio`) that exports a server
 - [x] **Stage 4** — production hardening: typed inputs, error handling, HTTP transport, Docker, tests + CI
+- [x] **Stage 5** — security & ops: inbound auth, DNS-rebinding protection, retries, `/health`, graceful shutdown
 
 ### Future ideas
 - Generate Python servers from the visual builder and OpenAPI import
