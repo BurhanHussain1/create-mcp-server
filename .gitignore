@@ -4,12 +4,20 @@ node_modules/
 # Compiled output
 dist/
 
+# Environment variables / secrets
+.env
+.env.*
+
 # Logs and OS files
 *.log
 .DS_Store
+Thumbs.db
 
 # Local scratch / testing
 .scratch/
+
+# Python virtual environment (for testing the generated Python servers)
+.venv/
 
 # npm pack output
 *.tgz

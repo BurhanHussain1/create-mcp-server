@@ -157,16 +157,72 @@ export interface VisualTool {
 // A whole server the user designed in the visual studio.
 export interface VisualSpec {
   name: string;
+  language?: "typescript" | "python";
   tools: VisualTool[];
 }
 
-// STUDIO mode: build the server files IN MEMORY (no disk writes) so the
-// web app can zip them up and send them to the browser.
+// Map a studio input type to a Python type hint.
+function pythonType(type: ToolInput["type"]): string {
+  if (type === "number") return "float";
+  if (type === "boolean") return "bool";
+  return "str";
+}
+
+// Turn a description into a safe Python triple-quoted docstring.
+function pythonDocstring(text: string): string {
+  const safe = (text || "").replace(/\\/g, "\\\\").replace(/"""/g, '\\"\\"\\"');
+  return `"""${safe}"""`;
+}
+
+// Render the studio's tools as Python FastMCP functions. Python requires
+// parameters WITHOUT defaults to come before those WITH defaults, so required
+// inputs are emitted first.
+function renderPythonTools(tools: VisualTool[]): string {
+  return tools
+    .map((tool) => {
+      const ordered = [
+        ...tool.inputs.filter((i) => i.required),
+        ...tool.inputs.filter((i) => !i.required),
+      ];
+      const signature = ordered
+        .map((i) =>
+          i.required
+            ? `${i.name}: ${pythonType(i.type)}`
+            : `${i.name}: ${pythonType(i.type)} | None = None`
+        )
+        .join(", ");
+      const argsDict = ordered.map((i) => `"${i.name}": ${i.name}`).join(", ");
+      return [
+        `@mcp.tool()`,
+        `def ${tool.name}(${signature}) -> str:`,
+        `    ${pythonDocstring(tool.description || tool.name)}`,
+        `    args = {${argsDict}}`,
+        `    # TODO: replace this with your real logic.`,
+        `    return (`,
+        `        f"Tool '${tool.name}' was called with: {args}\\n\\n"`,
+        `        "Edit server.py to make this tool do something real."`,
+        `    )`,
+      ].join("\n");
+    })
+    .join("\n\n\n");
+}
+
+// STUDIO mode: build the server files IN MEMORY (no disk writes) so the web
+// app can zip them up and send them to the browser. Supports TypeScript
+// (data-driven) and Python (generated FastMCP functions).
 export async function buildVisualServerFiles(
   spec: VisualSpec
 ): Promise<Map<string, string>> {
-  const templateDir = path.join(TEMPLATES_ROOT, "visual-typescript");
-  return readTemplateFiles(templateDir, templateDir, {
+  if (spec.language === "python") {
+    const dir = path.join(TEMPLATES_ROOT, "visual-python");
+    return readTemplateFiles(dir, dir, {
+      serverName: spec.name,
+      tools: renderPythonTools(spec.tools),
+    });
+  }
+
+  const dir = path.join(TEMPLATES_ROOT, "visual-typescript");
+  return readTemplateFiles(dir, dir, {
     serverName: spec.name,
     tools: JSON.stringify(spec.tools, null, 2),
   });

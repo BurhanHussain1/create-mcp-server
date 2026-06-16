@@ -27,9 +27,11 @@ program
 program
   .command("studio")
   .description("Launch the visual MCP server builder in your browser")
-  .option("-p, --port <number>", "port to run on", "4321")
-  .action(async (options: { port: string }) => {
-    await startStudio(Number(options.port));
+  .option("-p, --port <number>", "port to run on (defaults to $PORT or 4321)")
+  .action(async (options: { port?: string }) => {
+    // Priority: explicit --port, then the host's $PORT, then 4321.
+    const port = Number(options.port ?? process.env.PORT ?? 4321);
+    await startStudio(port);
   });
 
 // .action() = the code that runs when someone types our command with no

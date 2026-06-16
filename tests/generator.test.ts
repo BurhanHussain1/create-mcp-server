@@ -49,3 +49,59 @@ describe("buildVisualServerFiles", () => {
     expect(pkg.name).toBe("my-server");
   });
 });
+
+describe("buildVisualServerFiles (python)", () => {
+  it("produces the python server files", async () => {
+    const files = await buildVisualServerFiles({
+      name: "py-demo",
+      language: "python",
+      tools: [{ name: "t", description: "d", inputs: [] }],
+    });
+    expect(files.has("server.py")).toBe(true);
+    expect(files.has("requirements.txt")).toBe(true);
+    expect(files.has("README.md")).toBe(true);
+    // The TypeScript-only files must NOT be present in a python build.
+    expect(files.has("package.json")).toBe(false);
+  });
+
+  it("renders tools as typed FastMCP functions", async () => {
+    const files = await buildVisualServerFiles({
+      name: "py-demo",
+      language: "python",
+      tools: [
+        {
+          name: "greet",
+          description: "Greet someone",
+          inputs: [
+            { name: "who", type: "string", description: "name", required: true },
+            { name: "loud", type: "boolean", description: "", required: false },
+          ],
+        },
+      ],
+    });
+    const server = files.get("server.py")!;
+    expect(server).toContain("@mcp.tool()");
+    expect(server).toContain("def greet(who: str, loud: bool | None = None) -> str:");
+    // No unfilled placeholders should remain.
+    expect(server).not.toContain("{{");
+  });
+
+  it("includes the HTTP transport, inbound auth, and health boilerplate", async () => {
+    const files = await buildVisualServerFiles({
+      name: "py-demo",
+      language: "python",
+      tools: [{ name: "t", description: "d", inputs: [] }],
+    });
+    const server = files.get("server.py")!;
+    // Env-var contract matching the TypeScript server.
+    expect(server).toContain('os.environ.get("MCP_TRANSPORT")');
+    expect(server).toContain("MCP_AUTH_TOKEN");
+    expect(server).toContain("ALLOWED_HOSTS");
+    // HTTP wiring: streamable-http app, public /health route, DNS-rebinding.
+    expect(server).toContain("streamable_http_app()");
+    expect(server).toContain('@mcp.custom_route("/health"');
+    expect(server).toContain("TransportSecuritySettings");
+    // stdio stays the default.
+    expect(server).toContain("mcp.run()");
+  });
+});

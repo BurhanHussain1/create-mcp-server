@@ -1,0 +1,16 @@
+# Render Blueprint — one-click deploy of MCP Studio.
+# In Render: New → Blueprint → connect this repo. Render reads this file.
+#
+# (Build installs dev deps so `tsc` is available, then compiles to dist/.)
+services:
+  - type: web
+    name: mcp-studio
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node dist/index.js studio
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

@@ -10,6 +10,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "studio": "node dist/index.js studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src",
@@ -34,12 +35,18 @@
   "engines": {
     "node": ">=18"
   },
-  "files": ["dist", "templates", "public", "examples"],
+  "files": [
+    "dist",
+    "templates",
+    "public",
+    "examples"
+  ],
   "license": "MIT",
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "commander": "^15.0.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "jszip": "^3.10.1",
     "prompts": "^2.4.2"
   },

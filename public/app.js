@@ -5,8 +5,28 @@
 const toolsContainer = document.getElementById("tools");
 const statusEl = document.getElementById("status");
 
-// Build one "input" row (a single tool parameter):
-// name, type, description, and a "required" checkbox.
+// Small helper: a labeled field wrapper around a control.
+function field(labelText, control) {
+  const wrap = document.createElement("label");
+  wrap.className = "field";
+  const label = document.createElement("span");
+  label.className = "field-label";
+  label.textContent = labelText;
+  wrap.append(label, control);
+  return wrap;
+}
+
+function iconButton(title, onClick, small) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = small ? "icon-btn icon-btn-sm" : "icon-btn";
+  btn.title = title;
+  btn.innerHTML = "&times;";
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+// Build one "input" row: name, type, description, required, remove.
 function createInputRow() {
   const row = document.createElement("div");
   row.className = "input-row";
@@ -14,7 +34,7 @@ function createInputRow() {
   const name = document.createElement("input");
   name.type = "text";
   name.className = "input-name";
-  name.placeholder = "input name (e.g. city)";
+  name.placeholder = "input name";
 
   const type = document.createElement("select");
   type.className = "input-type";
@@ -30,69 +50,79 @@ function createInputRow() {
   desc.className = "input-desc";
   desc.placeholder = "description (optional)";
 
-  const requiredLabel = document.createElement("label");
-  requiredLabel.className = "required-label";
-  const required = document.createElement("input");
-  required.type = "checkbox";
-  required.className = "input-required";
-  required.checked = true;
-  requiredLabel.append(required, document.createTextNode(" required"));
+  const req = document.createElement("label");
+  req.className = "req";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.className = "input-required";
+  cb.checked = true;
+  req.append(cb, document.createTextNode("required"));
 
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.className = "btn-danger btn-small";
-  remove.textContent = "✕";
-  remove.addEventListener("click", () => row.remove());
-
-  row.append(name, type, desc, requiredLabel, remove);
+  row.append(
+    name,
+    type,
+    desc,
+    req,
+    iconButton("Remove input", () => row.remove(), true)
+  );
   return row;
 }
 
-// Build one tool "card" with a name, description, and a list of inputs.
+// Build one tool "card": header, name + description, and a list of inputs.
 function createToolCard() {
   const card = document.createElement("div");
   card.className = "tool-card";
 
-  const header = document.createElement("div");
-  header.className = "tool-header";
+  const head = document.createElement("div");
+  head.className = "card-head";
+  const title = document.createElement("span");
+  title.className = "card-title";
+  title.textContent = "Tool";
+  head.append(
+    title,
+    iconButton("Remove tool", () => card.remove(), false)
+  );
 
   const name = document.createElement("input");
   name.type = "text";
   name.className = "tool-name";
-  name.placeholder = "tool name (e.g. get_weather)";
-
-  const removeTool = document.createElement("button");
-  removeTool.type = "button";
-  removeTool.className = "btn-danger btn-small";
-  removeTool.textContent = "Remove tool";
-  removeTool.addEventListener("click", () => card.remove());
-
-  header.append(name, removeTool);
+  name.placeholder = "get_weather";
 
   const desc = document.createElement("input");
   desc.type = "text";
   desc.className = "tool-desc";
-  desc.placeholder = "what does this tool do?";
+  desc.placeholder = "What does this tool do?";
+
+  const grid = document.createElement("div");
+  grid.className = "field-grid";
+  grid.append(field("Name", name), field("Description", desc));
+
+  const inputsLabel = document.createElement("div");
+  inputsLabel.className = "inputs-label";
+  inputsLabel.textContent = "Inputs";
 
   const inputs = document.createElement("div");
   inputs.className = "inputs";
-  inputs.appendChild(createInputRow()); // start with one input
+  inputs.appendChild(createInputRow());
 
   const addInput = document.createElement("button");
   addInput.type = "button";
-  addInput.className = "btn-ghost btn-small";
+  addInput.className = "btn btn-ghost btn-sm";
   addInput.textContent = "+ Add input";
-  addInput.addEventListener("click", () =>
-    inputs.appendChild(createInputRow())
-  );
+  addInput.addEventListener("click", () => {
+    const row = createInputRow();
+    inputs.appendChild(row);
+    row.querySelector(".input-name").focus();
+  });
 
-  card.append(header, desc, inputs, addInput);
+  card.append(head, grid, inputsLabel, inputs, addInput);
   return card;
 }
 
 // Read the whole design out of the page into a plain object.
 function collectSpec() {
   const name = document.getElementById("server-name").value.trim();
+  const language = document.getElementById("server-language").value;
   const tools = [];
 
   for (const card of document.querySelectorAll(".tool-card")) {
@@ -112,7 +142,7 @@ function collectSpec() {
     tools.push({ name: toolName, description, inputs });
   }
 
-  return { name, tools };
+  return { name, language, tools };
 }
 
 function setStatus(message, kind) {
@@ -122,7 +152,11 @@ function setStatus(message, kind) {
 
 // Send the design to the server and download the resulting zip.
 async function generate() {
-  setStatus("Generating...", "");
+  const button = document.getElementById("generate");
+  button.disabled = true;
+  button.classList.add("loading");
+  setStatus("Generating…", "");
+
   const spec = collectSpec();
 
   try {
@@ -155,11 +189,16 @@ async function generate() {
     );
   } catch (err) {
     setStatus("Error: " + err.message, "error");
+  } finally {
+    button.disabled = false;
+    button.classList.remove("loading");
   }
 }
 
 document.getElementById("add-tool").addEventListener("click", () => {
-  toolsContainer.appendChild(createToolCard());
+  const card = createToolCard();
+  toolsContainer.appendChild(card);
+  card.querySelector(".tool-name").focus();
 });
 document.getElementById("generate").addEventListener("click", generate);
 

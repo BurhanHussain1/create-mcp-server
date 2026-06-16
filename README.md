@@ -74,6 +74,26 @@ Add tools and their inputs in the browser, click **Generate**, and a
 ready-to-run server downloads as a zip. Unzip it, then `npm install` and
 `npm run dev`.
 
+#### Host MCP Studio for everyone
+
+Want anyone to use the builder without installing anything? Deploy it as a web
+app. It binds to the host's `$PORT`, exposes a `/api/health` check, rate-limits
+the generate endpoint, and shuts down gracefully.
+
+**On Render / Railway (no Docker needed):**
+
+- Build command: `npm install && npm run build`
+- Start command: `node dist/index.js studio`
+- Health check path: `/api/health`
+- The platform sets `PORT` automatically.
+
+**With Docker (any host):**
+
+```bash
+docker build -t mcp-studio .
+docker run -p 4321:4321 mcp-studio
+```
+
 ## What the generated server looks like
 
 A TypeScript server is a single small file built on three ideas — create a server, register a tool, connect a transport:
@@ -148,7 +168,10 @@ npm publish        # prepublishOnly builds dist/ automatically
 - [x] **Stage 5** — security & ops: inbound auth, DNS-rebinding protection, retries, `/health`, graceful shutdown
 
 ### Future ideas
-- Generate Python servers from the visual builder and OpenAPI import
+- Python servers from the OpenAPI import (the visual builder already generates
+  Python, now at HTTP/auth parity with TypeScript — remote Streamable HTTP
+  transport, bearer-token auth, DNS-rebinding protection, `/health`, and
+  graceful shutdown)
 - Enum / array input types
 - One-click deploy to a cloud host
 

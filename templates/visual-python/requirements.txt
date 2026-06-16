@@ -1,0 +1,6 @@
+# The official MCP Python SDK. The [cli] extra adds helpful command-line tools.
+mcp[cli]>=1.12.0
+# Used directly by the HTTP transport (also pulled in by mcp, pinned here so
+# the imports in server.py are guaranteed to resolve).
+starlette>=0.27
+uvicorn>=0.31.1
